@@ -1,0 +1,11 @@
+{
+  "binaries": [
+    {
+      "name": "hello_cargo",
+      "src_path": "/Users/lunaferraraccio/projects/hello_cargo/src/main.rs"
+    }
+  ],
+  "examples": [],
+  "integration_tests": [],
+  "unit_tests": []
+}
