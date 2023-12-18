@@ -1,0 +1,11 @@
+{
+  "binaries": [
+    {
+      "name": "guessing_game",
+      "src_path": "/Users/lunaferraraccio/projects/guessing_game/src/main.rs"
+    }
+  ],
+  "examples": [],
+  "integration_tests": [],
+  "unit_tests": []
+}
