@@ -18,14 +18,17 @@ fn main() {
 
         let guess: u32 = match guess.trim().parse() {
             Ok(num) => num,
-            Err(_) => continue,
+            Err(e) => {
+                println!("please write a number, {e}");
+                continue;
+            }
         };
 
         println!("You guessed: {guess}");
 
         match guess.cmp(&secret_number) {
             Ordering::Less => println!("Too small!"),
-            Ordering:: Greater => println!("Too big!"),
+            Ordering::Greater => println!("Too big!"),
             Ordering::Equal => {
                 println!("You win!");
                 break;
