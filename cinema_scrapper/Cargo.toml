@@ -1,0 +1,12 @@
+[package]
+name = "cinema_scrapper"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ureq = "2.9.4"
+scraper = "0.18.1"
+notify-rust = "4.10.0"
+reqwest = "0.9.22"
