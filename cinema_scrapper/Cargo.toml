@@ -10,3 +10,4 @@ ureq = "2.9.4"
 scraper = "0.18.1"
 notify-rust = "4.10.0"
 reqwest = "0.9.22"
+time = { version = "0.3.34", features = ["parsing", "macros"] }
