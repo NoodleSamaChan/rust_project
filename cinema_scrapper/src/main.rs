@@ -1,35 +1,15 @@
 extern crate reqwest;
 extern crate scraper;
-
-use scraper::{ElementRef, Html, Selector};
+use std::io;
+use std::fs::File;
+use cinema_scrapper::scrape_time_and_title_data;
 
 fn main(){
-    scrape_team_data("https://www.cineode.fr/le-vigan-le-palace/horaires/semaine-prochaine/");
-}
+    
+    let req = reqwest::get("https://www.cineode.fr/le-vigan-le-palace/horaires/").unwrap().text().unwrap();
+    scrape_time_and_title_data(req);
 
-fn scrape_team_data(url:&str){
-
-    let mut req = reqwest::get(url).unwrap();
-    assert!(req.status().is_success());
-    let doc_body = Html::parse_document(&req.text().unwrap());
-
-    let block_selector = Selector::parse(".wrap-fiche-film").unwrap();
-    //let select_block = doc_body.select(&block_selector).next().unwrap();
-
-    let titre = Selector::parse("div > div > h4 > a").unwrap(); 
-
-    for element in doc_body.select(&block_selector){
-
-        for titre_movie in element.select(&titre){
-            let titre_movie = titre_movie.text().collect::<Vec<_>>();
-            println!("{:?}", titre_movie);
-        }
-
-        let time = Selector::parse(".hor").unwrap();
-
-        for time in element.select(&time){
-            let times = time.text().collect::<Vec<_>>();
-            println!("{:?}", times);
-        }
-    }
+    let mut resp = reqwest::get("https://www.cineode.fr/le-vigan-le-palace/horaires/").expect("request failed");
+    let mut out = File::create("html_file.html").expect("failed to create file");
+    io::copy(&mut resp, &mut out).expect("failed to copy content");
 }
