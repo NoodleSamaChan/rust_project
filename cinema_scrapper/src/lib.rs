@@ -74,10 +74,6 @@ pub fn scrape_time_and_title_data(html_file:String) -> Vec<MovieTimes>{
         titles_of_movies = String::new();
         times_of_movies = Vec::new();
     }
-
-    println!("{:#?}", vec_strcut_movies);
-    println!("{:#?}", vec_strcut_movies);
-
     return vec_strcut_movies
 }
 
