@@ -7,6 +7,8 @@ use time::OffsetDateTime;
 
 #[derive(Debug)]
 #[derive(Clone)]
+
+//movie title and time structure
 pub struct MovieTimes {
     title: String,
     times: Vec<time::Time>,
@@ -29,37 +31,52 @@ impl MovieTimes {
 pub fn scrape_time_and_title_data(html_file:String) -> Vec<MovieTimes>{
 
     let doc_body = Html::parse_document(&html_file);
-
+    
+    //selectors of htlm code
     let block_selector = Selector::parse(".wrap-fiche-film").unwrap();
-
     let titre = Selector::parse("div > div > h4 > a").unwrap(); 
+    let day = Selector::parse(".today").unwrap();
 
     let mut titles_of_movies: String = String::new();
     let mut times_of_movies:Vec<time::Time> = Vec::new();
     let mut vec_strcut_movies: Vec<MovieTimes> = Vec::new();
     let format = format_description!("[hour]h[minute]");
 
+    //loops to gather information based on the selectors
     for element in doc_body.select(&block_selector){
 
+        //title selector
         for titre_movie in element.select(&titre){
             let titre_movie: String = titre_movie.text().map(|element|element.to_string()).next().unwrap();
             titles_of_movies = titre_movie;
         }
+        
+        //day "today" selector
+        for day in element.select(&day){
 
-        let time = Selector::parse(".hor").unwrap();
+            //time selector
+            let time = Selector::parse(".hor").unwrap();
 
-        for time in element.select(&time){
-            let times: Vec<time::Time> = time.text().clone().map(|element|(Time::parse(element, &format).expect(element))).collect::<Vec<_>>();
-            times_of_movies.extend(times.clone());
+            for time in day.select(&time){
+                let times: Vec<time::Time> = time.text().clone().map(|element|(Time::parse(element, &format).expect(element))).collect::<Vec<_>>();
+                times_of_movies.extend(times.clone());
+            }
         }
+        
+        //time duplication delation
+        times_of_movies.dedup();
 
+        //structure creation
         let movie_sched = build_scheduler(titles_of_movies.clone(), times_of_movies.clone());
         vec_strcut_movies.push(movie_sched);
-
+        
+        //reseting of variables
         titles_of_movies = String::new();
         times_of_movies = Vec::new();
-
     }
+
+    println!("{:#?}", vec_strcut_movies);
+    println!("{:#?}", vec_strcut_movies);
 
     return vec_strcut_movies
 }

@@ -11,8 +11,6 @@ fn main(){
     let struct_creator = scrape_time_and_title_data(req);
     let next_movie_viewing = next_movie(struct_creator);
 
-    println!("{:#?}", next_movie_viewing);
-
     let mut resp = reqwest::get("https://www.cineode.fr/le-vigan-le-palace/horaires/").expect("request failed");
     let mut out = File::create("html_file.html").expect("failed to create file");
     io::copy(&mut resp, &mut out).expect("failed to copy content");
