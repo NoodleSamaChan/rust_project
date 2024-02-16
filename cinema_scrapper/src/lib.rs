@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 
 #[derive(Debug)]
 #[derive(Clone)]
-
+#[derive(PartialEq)] 
 //movie title and time structure
 pub struct MovieTimes {
     pub title: String,
@@ -15,16 +15,9 @@ pub struct MovieTimes {
 }
 
 pub fn build_scheduler (title_to_add: String, times_to_add: Vec<time::Time>) -> MovieTimes {
-    if times_to_add.is_empty() == false {
-        MovieTimes{
-            title: title_to_add,
-            times: times_to_add,
-        }
-    } else {
-        MovieTimes{
-            title: String::new(),
-            times: Vec::new(),
-        }
+    MovieTimes{
+        title: title_to_add,
+        times: times_to_add,
     }
 }
 
@@ -74,7 +67,7 @@ pub fn scrape_time_and_title_data(html_file:String) -> Vec<MovieTimes>{
         times_of_movies.dedup();
 
         //structure creation
-        if times_of_movies.is_empty() != true {
+        if times_of_movies.is_empty() == false {
             let movie_sched = build_scheduler(titles_of_movies.clone(), times_of_movies.clone());
             vec_strcut_movies.push(movie_sched);
         }
@@ -100,11 +93,6 @@ mod tests {
     use super::*;
     #[test]
     fn test_scrape_from_html() {
-        let file_to_convert = include_str!("../tests/html_file.html").to_string();
-
-        let vec_to_compare: Vec<String> = vec!["\tMaison de retraite 2\t", "16h00", "\tCocorico\t", "20h30", "16h00", "18h00", "20h30", "18h00", "16h00", "20h30", "\tLe Dernier Jaguar\t", "18h00", "16h00", "14h00", "14h00", "14h00", "14h00", "\tLéo, la fabuleuse histoire de Léonard de Vinci\t", "14h00", "11h00", "\tLe Dernier des Juifs\t", "16h00", "20h00", "\tVivre avec les loups\t", "16h00", "18h00", "16h00", "\tPauvres Créatures\t", "18h00", "20h00", "18h00", "18h00", "20h00", "\tPierre Feuille Pistolet\t", "20h00"].iter().map(|element|element.to_string()).collect();
-        
-        let result  = scrape_time_and_title_data(file_to_convert);
-        assert_eq!(result, vec_to_compare);
+        todo!()
     }
 }
