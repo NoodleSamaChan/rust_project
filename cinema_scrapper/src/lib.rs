@@ -10,14 +10,21 @@ use time::OffsetDateTime;
 
 //movie title and time structure
 pub struct MovieTimes {
-    title: String,
-    times: Vec<time::Time>,
+    pub title: String,
+    pub times: Vec<time::Time>,
 }
 
 pub fn build_scheduler (title_to_add: String, times_to_add: Vec<time::Time>) -> MovieTimes {
-    MovieTimes{
-        title: title_to_add,
-        times: times_to_add,
+    if times_to_add.is_empty() == false {
+        MovieTimes{
+            title: title_to_add,
+            times: times_to_add,
+        }
+    } else {
+        MovieTimes{
+            title: String::new(),
+            times: Vec::new(),
+        }
     }
 }
 
@@ -67,13 +74,16 @@ pub fn scrape_time_and_title_data(html_file:String) -> Vec<MovieTimes>{
         times_of_movies.dedup();
 
         //structure creation
-        let movie_sched = build_scheduler(titles_of_movies.clone(), times_of_movies.clone());
-        vec_strcut_movies.push(movie_sched);
-        
+        if times_of_movies.is_empty() != true {
+            let movie_sched = build_scheduler(titles_of_movies.clone(), times_of_movies.clone());
+            vec_strcut_movies.push(movie_sched);
+        }
+
         //reseting of variables
         titles_of_movies = String::new();
         times_of_movies = Vec::new();
     }
+
     return vec_strcut_movies
 }
 
