@@ -1,0 +1,10 @@
+[package]
+name = "grains_de_sable"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+minifb = "0.25"
+src = "0.0.6"
