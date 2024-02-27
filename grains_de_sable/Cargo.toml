@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 minifb = "0.25"
 src = "0.0.6"
+
+[dev-dependencies]
+proptest = "1.4.0"
