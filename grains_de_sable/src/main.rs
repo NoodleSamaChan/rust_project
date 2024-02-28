@@ -1,6 +1,7 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
 use std::slice::Chunks;
+use insta::assert_display_snapshot;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -147,6 +148,32 @@ mod test {
 #.#.
 "
         );
+    }
+
+    #[test]
+    fn display_window_buffer_v2() {
+        let mut buffer = WindowBuffer::new(4, 4);
+        assert_display_snapshot!(buffer.to_string(), @r###"
+        ....
+        ....
+        ....
+        ....
+        "###);
+
+        buffer.buffer[1] = 1;
+        buffer.buffer[3] = 3;
+        buffer.buffer[4] = 4;
+        buffer.buffer[6] = 6;
+        buffer.buffer[9] = 9;
+        buffer.buffer[11] = 11;
+        buffer.buffer[12] = 12;
+        buffer.buffer[14] = 14;
+        assert_display_snapshot!(buffer.to_string(), @r###"
+        .#.#
+        #.#.
+        .#.#
+        #.#.
+        "###); 
     }
 
     proptest! {
