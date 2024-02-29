@@ -40,6 +40,46 @@ impl fmt::Display for WindowBuffer {
     }
 }
 
+impl std::ops::Index<(usize, usize)> for WindowBuffer {
+    type Output = u32;
+
+    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
+        if x >= self.width {
+            panic!(
+                "Tried to index in a buffer of width {} with a x of {}",
+                self.width, x
+            );
+        }
+        if y >= self.height {
+            panic!(
+                "Tried to index in a buffer of height {} with a y of {}",
+                self.height, y
+            );
+        }
+
+        &self.buffer[y * self.width + x]
+    }
+}
+
+impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
+    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
+        if x >= self.width {
+            panic!(
+                "Tried to index in a buffer of width {} with a x of {}",
+                self.width, x
+            );
+        }
+        if y >= self.height {
+            panic!(
+                "Tried to index in a buffer of height {} with a y of {}",
+                self.height, y
+            );
+        }
+
+        &mut self.buffer[y * self.width + x]
+    }
+}
+
 fn main() {
     let mut buffer = WindowBuffer::new(WIDTH, HEIGHT);
 
@@ -181,5 +221,41 @@ mod test {
         fn test_both_rgb(red in 0u8.., green in 0u8.., blue  in 0u8..) {
             assert_eq!(rgb(red, green, blue), rgb2(red, green, blue));
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_bad_index_width() {
+        let mut buffer = WindowBuffer::new(4, 4);
+        buffer[(0, 5)] = 0;
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_bad_index_height() {
+        let mut buffer = WindowBuffer::new(4, 4);
+        buffer[(5, 0)] = 0;
+    }
+
+    #[test]
+    fn test_index() {
+        let mut buffer = WindowBuffer::new(4, 4);
+        buffer[(0, 1)] = 1;
+        buffer[(0, 3)] = 3;
+        buffer[(1, 0)] = 4;
+        buffer[(1, 2)] = 6;
+        buffer[(2, 1)] = 9;
+        buffer[(2, 3)] = 11;
+        buffer[(3, 0)] = 12;
+        buffer[(3, 2)] = 14;
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .#.#
+        #.#.
+        .#.#
+        #.#.
+        "###
+        );
     }
 }
