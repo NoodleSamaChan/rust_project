@@ -2,6 +2,8 @@ use minifb::{Key, Window, WindowOptions};
 use std::fmt;
 use insta::assert_display_snapshot;
 use rand::Rng;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -94,11 +96,13 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
     }
 }
 #[derive(Clone)]
+#[derive(Debug)]
 struct Sand {
     x: usize,
     y: usize,
 }
 
+#[derive(Debug)]
 struct World {
     world: Vec<Sand>,
 }
@@ -115,31 +119,33 @@ impl World {
                 }
                 sand.y += 1;
                 if self.world.iter().any(|s| (sand.x, sand.y) == (s.x, s.y)) {
-                    continue;
+                    if sand.x < buffer.width() && sand.x > 0 {
+                        let mut rng = StdRng::seed_from_u64(0);
+                        let n: u32 = rng.gen_range(0..=1);
+
+                        if n == 0 {
+                            if self.world.iter().all(|s| (sand.x-1, sand.y) != (s.x, s.y)){
+                                sand.x -= 1;
+                            } else if self.world.iter().all(|s| (sand.x+1, sand.y) != (s.x, s.y)) {
+                                sand.x += 1;
+                            } else {
+                                continue
+                            }
+ 
+                        } else {
+                            if self.world.iter().all(|s| (sand.x+1, sand.y) != (s.x, s.y)){
+                                sand.x += 1;
+                            } else if self.world.iter().all(|s| (sand.x-1, sand.y) != (s.x, s.y)) {
+                                sand.x -= 1;
+                            } else {
+                                continue
+                            }
+                        }
+                    };
                 }
                 if sand.y < buffer.height() {
                     self.world[index] = sand;
-                } else {
-                    if sand.x < buffer.width() && sand.x >= 0 {
-                        let mut rng = rand::thread_rng();
-                        let n: u32 = rng.gen_range(0..1);
-
-                        if n == 0 {
-                            sand.x -= 1;
-                        } else {
-                            sand.x += 1;
-                        }
-
-                        if sand.y != y {
-                            continue;
-                        }
-                        sand.y += 1;
-                        if self.world.iter().any(|s| (sand.x, sand.y) == (s.x, s.y)) {
-                            continue;
-                        }
-                    }
-
-                }
+                } 
             }
         }
     }
@@ -415,9 +421,9 @@ mod test {
             buffer.to_string(),
             @r###"
         .....
+        .....
         ..#..
-        ..#..
-        ..#..
+        ..##.
         "###
         );
         world.update(&buffer);
@@ -426,9 +432,9 @@ mod test {
             buffer.to_string(),
             @r###"
         .....
-        ..#..
-        ..#..
-        ..#..
+        .....
+        .....
+        .###.
         "###
         );
     }
