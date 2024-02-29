@@ -1,7 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
-use std::slice::Chunks;
-use insta::assert_display_snapshot;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -21,6 +19,18 @@ impl WindowBuffer {
             buffer: vec![0; width * height],
         }
     }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn buffer(&self) -> Vec<u32> {
+        self.buffer.clone()
+    }
 }
 impl fmt::Display for WindowBuffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,7 +49,6 @@ impl fmt::Display for WindowBuffer {
         Ok(())
     }
 }
-
 impl std::ops::Index<(usize, usize)> for WindowBuffer {
     type Output = u32;
 
@@ -60,7 +69,6 @@ impl std::ops::Index<(usize, usize)> for WindowBuffer {
         &self.buffer[y * self.width + x]
     }
 }
-
 impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
     fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
         if x >= self.width {
@@ -80,6 +88,29 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
     }
 }
 
+struct Sand {
+    x: usize,
+    y: usize,
+}
+
+struct World {
+    world: Vec<Sand>,
+}
+impl World {
+    pub fn update(&mut self) {
+        // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
+        for sand in self.world.iter_mut() {
+            sand.y += 1;
+        }
+    }
+
+    pub fn display(&self, buffer: &mut WindowBuffer) {
+        for sand in self.world.iter() {
+            buffer[(sand.x, sand.y)] = u32::MAX;
+        }
+    }
+}
+
 fn main() {
     let mut buffer = WindowBuffer::new(WIDTH, HEIGHT);
 
@@ -93,31 +124,34 @@ fn main() {
         panic!("{}", e);
     });
 
+    let mut world = World {
+        world: vec![Sand { x: WIDTH / 2, y: 0 }],
+    };
+
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        // On va avoir besoin de connaître la taille totale du buffer AVANT d'entrer dans la boucle
-        let buffer_len = buffer.buffer.len();
+        for y in 0..buffer.height() {
+            for x in 0..buffer.width() {
+                            // On commence par convertir l'index en une valeur qui va de `0` à `1` où `1` sera renvoyé lorsqu’on est a droite de l’écran.
+            // Si on veut c'est un simple pourcentage qui indique notre progression de la gauche vers la droite.
+            let progression = x as f64 / buffer.width() as f64;
 
-        // Ici grace au `.enumerate()` on récupère l'index auquel on se trouve dans la boucle en plus du pixel a modifier (précédemment appelé `i`)
-        for (idx, pixel) in buffer.buffer.iter_mut().enumerate() {
-            // On commence par convertir l'index en une valeur qui va de `0` à `1` où `1` sera renvoyé lorsque l'index atteint la taille du buffer.
-            // Si on veut c'est un simple pourcentage qui indique notre progression dans tous les pixels à modifier.
-            let progression = idx as f64 / buffer_len as f64;
-        
             // En multipliant la `progression` par `u8::MAX` on fait passer cette valeur de `0` à `u8::MAX` (`255`). On peut convertir le tout en `u8`.
             let color = (progression * u8::MAX as f64) as u8;
-        
+
             // Pour notre dégradé on utilise seulement le canal du rouge
-            *pixel = rgb(0, 0, color);
+            buffer[(x, y)] = rgb(0, 0, color);
+
         }
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
-            .update_with_buffer(&buffer.buffer, WIDTH, HEIGHT)
+            .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
             .unwrap();
 
+        }
     }
 }
 
