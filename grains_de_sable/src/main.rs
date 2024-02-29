@@ -1,6 +1,7 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
 use insta::assert_display_snapshot;
+use rand::Rng;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -92,7 +93,7 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
         &mut self.buffer[y * self.width + x]
     }
 }
-
+#[derive(Clone)]
 struct Sand {
     x: usize,
     y: usize,
@@ -103,10 +104,42 @@ struct World {
 }
 impl World {
     pub fn update(&mut self, buffer: &WindowBuffer) {
-        // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
-        for sand in self.world.iter_mut() {
-            if sand.y < buffer.height() - 1 {
+        // On parcours les `y` de bas en haut en faisant un itérateur qui va de la `height` jusqu’à 0.
+        // Comme on ne peut pas faire de range inversée `buffer.height()..0` on utilise le `.rev()`.
+        for y in (0..buffer.height()).rev() {
+            for index in 0..self.world.len() {
+                let mut sand = self.world[index].clone();
+                // On ne mets à jour que les grains de sable qui sont sur la ligne observée
+                if sand.y != y {
+                    continue;
+                }
                 sand.y += 1;
+                if self.world.iter().any(|s| (sand.x, sand.y) == (s.x, s.y)) {
+                    continue;
+                }
+                if sand.y < buffer.height() {
+                    self.world[index] = sand;
+                } else {
+                    if sand.x < buffer.width() && sand.x >= 0 {
+                        let mut rng = rand::thread_rng();
+                        let n: u32 = rng.gen_range(0..1);
+
+                        if n == 0 {
+                            sand.x -= 1;
+                        } else {
+                            sand.x += 1;
+                        }
+
+                        if sand.y != y {
+                            continue;
+                        }
+                        sand.y += 1;
+                        if self.world.iter().any(|s| (sand.x, sand.y) == (s.x, s.y)) {
+                            continue;
+                        }
+                    }
+
+                }
             }
         }
     }
@@ -140,6 +173,7 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
+        world.world.push(Sand { x: WIDTH / 2, y: 0 });
         world.update(&buffer);
         world.display(&mut buffer);
 
@@ -304,25 +338,25 @@ mod test {
         "###
         );
 
-        world.update();
+        world.update(&buffer);
         world.display(&mut buffer);
         assert_display_snapshot!(
             buffer.to_string(),
             @r###"
-        ...#.
+        .....
         ...#.
         .....
         .....
         "###
         );
 
-        world.update();
+        world.update(&buffer);
         world.display(&mut buffer);
         assert_display_snapshot!(
             buffer.to_string(),
             @r###"
-        ...#.
-        ...#.
+        .....
+        .....
         ...#.
         .....
         "###
@@ -337,11 +371,65 @@ mod test {
             world: vec![Sand { x: WIDTH / 2, y: 3 }],
         };
 
-        world.update();
+        world.update(&buffer);
         world.display(&mut buffer);
         assert_display_snapshot!(
             buffer.to_string(),
             @r###""###
+        );
+    }
+    #[test]
+    fn sand_physic() {
+        let mut buffer = WindowBuffer::new(5, 4);
+        let mut world = World {
+            world: vec![
+                Sand { x: 2, y: 2 },
+                Sand { x: 2, y: 1 },
+                Sand { x: 2, y: 0 },
+            ],
+        };
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ..#..
+        ..#..
+        ..#..
+        .....
+        "###
+        );
+        world.update(&buffer);
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        ..#..
+        ..#..
+        ..#..
+        "###
+        );
+        world.update(&buffer);
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        ..#..
+        ..#..
+        ..#..
+        "###
+        );
+        world.update(&buffer);
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        ..#..
+        ..#..
+        ..#..
+        "###
         );
     }
 }

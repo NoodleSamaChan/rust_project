@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 insta = "1.35.1"
 minifb = "0.25"
+rand = "0.8.5"
 src = "0.0.6"
 
 [dev-dependencies]
