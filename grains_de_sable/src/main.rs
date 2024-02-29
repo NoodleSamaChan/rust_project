@@ -1,5 +1,6 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
+use insta::assert_display_snapshot;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -30,6 +31,10 @@ impl WindowBuffer {
 
     pub fn buffer(&self) -> Vec<u32> {
         self.buffer.clone()
+    }
+
+    pub fn reset(&mut self) {
+        self.buffer.fill(0);
     }
 }
 impl fmt::Display for WindowBuffer {
@@ -97,14 +102,19 @@ struct World {
     world: Vec<Sand>,
 }
 impl World {
-    pub fn update(&mut self) {
+    pub fn update(&mut self, buffer: &WindowBuffer) {
         // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
         for sand in self.world.iter_mut() {
-            sand.y += 1;
+            if sand.y < buffer.height() - 1 {
+                sand.y += 1;
+            }
         }
     }
 
     pub fn display(&self, buffer: &mut WindowBuffer) {
+        // On remets le buffer a zero avant d’écrire quoi que ce soit dedans
+        buffer.reset();
+
         for sand in self.world.iter() {
             buffer[(sand.x, sand.y)] = u32::MAX;
         }
@@ -124,35 +134,20 @@ fn main() {
         panic!("{}", e);
     });
 
-    let mut world = World {
-        world: vec![Sand { x: WIDTH / 2, y: 0 }],
-    };
+    let mut world = World { world: Vec::new() };
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for y in 0..buffer.height() {
-            for x in 0..buffer.width() {
-                            // On commence par convertir l'index en une valeur qui va de `0` à `1` où `1` sera renvoyé lorsqu’on est a droite de l’écran.
-            // Si on veut c'est un simple pourcentage qui indique notre progression de la gauche vers la droite.
-            let progression = x as f64 / buffer.width() as f64;
-
-            // En multipliant la `progression` par `u8::MAX` on fait passer cette valeur de `0` à `u8::MAX` (`255`). On peut convertir le tout en `u8`.
-            let color = (progression * u8::MAX as f64) as u8;
-
-            // Pour notre dégradé on utilise seulement le canal du rouge
-            buffer[(x, y)] = rgb(0, 0, color);
-
-        }
+        world.update(&buffer);
+        world.display(&mut buffer);
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
             .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
             .unwrap();
-
         }
-    }
 }
 
 pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
@@ -290,6 +285,63 @@ mod test {
         .#.#
         #.#.
         "###
+        );
+    }
+    #[test]
+    fn simple_sand_drop() {
+        let mut buffer = WindowBuffer::new(5, 4);
+        let mut world = World {
+            world: vec![Sand { x: 3, y: 0 }],
+        };
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ...#.
+        .....
+        .....
+        .....
+        "###
+        );
+
+        world.update();
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ...#.
+        ...#.
+        .....
+        .....
+        "###
+        );
+
+        world.update();
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ...#.
+        ...#.
+        ...#.
+        .....
+        "###
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_y_bigger_than_buffer() {
+        let mut buffer = WindowBuffer::new(5, 4);
+        let mut world = World {
+            world: vec![Sand { x: WIDTH / 2, y: 3 }],
+        };
+
+        world.update();
+        world.display(&mut buffer);
+        assert_display_snapshot!(
+            buffer.to_string(),
+            @r###""###
         );
     }
 }
