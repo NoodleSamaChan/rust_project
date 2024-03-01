@@ -6,4 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+insta = "1.35.1"
 minifb = "0.25.0"
+proptest = "1.4.0"
