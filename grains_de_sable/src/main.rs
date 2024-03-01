@@ -6,6 +6,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use minifb::MouseMode;
 use minifb::MouseButton;
+use std::cmp::Reverse;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -99,26 +100,30 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 }
 #[derive(Clone)]
 #[derive(Debug)]
-struct Sand {
+pub struct Sand {
     x: usize,
     y: usize,
+
+    color: u32,
 }
 
-#[derive(Debug)]
-struct World {
+
+pub struct World {
     world: Vec<Sand>,
+    colors: Box<dyn Iterator<Item = (u8, u8, u8)>>,
 }
 impl World {
     pub fn update(&mut self, buffer: &WindowBuffer) {
-        // On parcours les `y` de bas en haut en faisant un itérateur qui va de la `height` jusqu’à 0.
-        // Comme on ne peut pas faire de range inversée `buffer.height()..0` on utilise le `.rev()`.
-        for y in (0..buffer.height()).rev() {
-            for index in 0..self.world.len() {
-                let mut sand = self.world[index].clone();
-                // On ne mets à jour que les grains de sable qui sont sur la ligne observée
-                if sand.y != y {
-                    continue;
-                }
+
+        self.world.sort_unstable_by_key(|sand| Reverse(sand.y));
+
+        for index in 0..self.world.len() {
+            let mut sand = self.world[index].clone();
+            // On ne mets à jour que les grains de sable qui sont sur la ligne observée
+            sand.y += 1;
+            if sand.y >= buffer.height() {
+                continue;
+            }
                 sand.y += 1;
                 if self.world.iter().any(|s| (sand.x, sand.y) == (s.x, s.y)) {
                     if sand.x < buffer.width() && sand.x > 0 {
@@ -148,28 +153,56 @@ impl World {
                 if sand.y < buffer.height() {
                     self.world[index] = sand;
                 } 
-            }
         }
     }
 
     pub fn display(&self, buffer: &mut WindowBuffer) {
-        // On remets le buffer a zero avant d’écrire quoi que ce soit dedans
+
         buffer.reset();
 
         for sand in self.world.iter() {
-            buffer[(sand.x, sand.y)] = rgb(250, 250, 0);
+            buffer[(sand.x, sand.y)] = sand.color;
         }
     }
 
     pub fn handle_user_input(&mut self, window: &Window) {
         if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
             if window.get_mouse_down(MouseButton::Left) {
-                self.world.push(Sand {
-                    x: x as usize,
-                    y: y as usize,
-                });
-            }
+                let (x, y) = (x as usize, y as usize);
+                let thickness = 2;
+
+                for x in (x - thickness)..(x + thickness) {
+                    for y in (y - thickness)..(y + thickness) {
+
+                        let (r, g, b) = self.colors.next().unwrap();
+                                let sand = Sand {
+                                    x: x as usize,
+                                    y: y as usize,
+                                    color: rgb(r, g, b),
+                                };
+
+                        self.world.push(sand);
+                    }
+                }
+            }   
         }
+    }
+
+    pub fn color_generator() -> impl Iterator<Item = (u8, u8, u8)> {
+        let channel = (0..u8::MAX) // On monte jusqu’à u8::MAX de 1 en 1
+            .chain(std::iter::repeat(u8::MAX).take(u8::MAX as usize * 2)) // On reste a u8::MAX PENDANT u8::MAX itération pour que l’autre channel puisse nous rejoindre
+            .chain((0..=u8::MAX).rev()) // On redescend jusqu’à 0
+            .chain(std::iter::repeat(0).take(u8::MAX as usize * 2)) // On reste a 0 pendant u8::MAX * 2
+            .cycle(); // On répète tout ça a l’infini
+    
+        let colors = channel
+            .clone()
+            .skip(u8::MAX as usize * 2)
+            .zip(channel.clone())
+            .zip(channel.clone().skip(u8::MAX as usize * 4))
+            .map(|((r, g), b)| (r, g, b));
+    
+        colors
     }
 }
 
@@ -186,7 +219,10 @@ fn main() {
         panic!("{}", e);
     });
 
-    let mut world = World { world: Vec::new() };
+    let mut world = World {
+        world: Vec::new(),
+        colors: Box::new(World::color_generator()),
+    };
 
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
@@ -344,7 +380,8 @@ mod test {
     fn simple_sand_drop() {
         let mut buffer = WindowBuffer::new(5, 4);
         let mut world = World {
-            world: vec![Sand { x: 3, y: 0 }],
+            world: vec![Sand { x: 3, y: 0, color: 250}],
+            colors: Box::new(World::color_generator()),
         };
         world.display(&mut buffer);
         assert_display_snapshot!(
@@ -387,7 +424,8 @@ mod test {
     fn test_y_bigger_than_buffer() {
         let mut buffer = WindowBuffer::new(5, 4);
         let mut world = World {
-            world: vec![Sand { x: WIDTH / 2, y: 3 }],
+            world: vec![Sand { x: WIDTH / 2, y: 3, color: rgb(u8::MAX, u8::MAX, 0) }],
+            colors: Box::new(World::color_generator()),
         };
 
         world.update(&buffer);
@@ -402,10 +440,11 @@ mod test {
         let mut buffer = WindowBuffer::new(5, 4);
         let mut world = World {
             world: vec![
-                Sand { x: 2, y: 2 },
-                Sand { x: 2, y: 1 },
-                Sand { x: 2, y: 0 },
+                Sand { x: 2, y: 2, color: rgb(u8::MAX, u8::MAX, 0) },
+                Sand { x: 2, y: 1, color: rgb(u8::MAX, u8::MAX, 0) },
+                Sand { x: 2, y: 0, color: rgb(u8::MAX, u8::MAX, 0) },
             ],
+            colors: Box::new(World::color_generator()),
         };
         world.display(&mut buffer);
         assert_display_snapshot!(
