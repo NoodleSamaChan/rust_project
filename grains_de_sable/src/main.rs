@@ -4,6 +4,8 @@ use insta::assert_display_snapshot;
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use minifb::MouseMode;
+use minifb::MouseButton;
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -155,7 +157,18 @@ impl World {
         buffer.reset();
 
         for sand in self.world.iter() {
-            buffer[(sand.x, sand.y)] = u32::MAX;
+            buffer[(sand.x, sand.y)] = rgb(250, 250, 0);
+        }
+    }
+
+    pub fn handle_user_input(&mut self, window: &Window) {
+        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
+            if window.get_mouse_down(MouseButton::Left) {
+                self.world.push(Sand {
+                    x: x as usize,
+                    y: y as usize,
+                });
+            }
         }
     }
 }
@@ -179,15 +192,15 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        world.world.push(Sand { x: WIDTH / 2, y: 0 });
+        world.handle_user_input(&window);
         world.update(&buffer);
         world.display(&mut buffer);
 
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
         window
-            .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
+            .update_with_buffer(&buffer.buffer(), buffer.width(), buffer.height())
             .unwrap();
-        }
+    }
 }
 
 pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
