@@ -1,6 +1,8 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
 use insta::assert_snapshot;
+use minifb::{MouseMode, MouseButton};
+
 
 const WIDTH: usize = 640;
 const HEIGHT: usize = 360;
@@ -36,6 +38,18 @@ impl WindowBuffer {
             height,
             buffer: vec![0; width * height],
         }
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn buffer(&self) -> Vec<u32> {
+        self.buffer.clone()
     }
 }
 
@@ -97,6 +111,44 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 }
 // GRID CREATION END
 
+// CELLS CREATION
+struct Sand {
+    x: usize,
+    y: usize,
+}
+
+struct World {
+    world: Vec<Sand>,
+}
+
+impl World {
+
+    pub fn update(&mut self) {
+        // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
+        for sand in self.world.iter_mut() {
+            sand.y;
+        }
+    }
+
+    pub fn display(&self, buffer: &mut WindowBuffer) {
+        for sand in self.world.iter() {
+            buffer[(sand.x, sand.y)] = u32::MAX;
+        }
+    }
+
+    pub fn handle_user_input(&mut self, window: &Window) {
+        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
+            if window.get_mouse_down(MouseButton::Left) {
+                self.world.push(Sand {
+                    x: x as usize,
+                    y: y as usize,
+                });
+            }
+        }
+    }
+}
+// CELLS CREATION END
+
 fn main() {
     let mut buffer = WindowBuffer::new(WIDTH, HEIGHT);
 
@@ -110,17 +162,19 @@ fn main() {
         panic!("{}", e);
     });
 
+    let mut world = World { world: Vec::new() };
+
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        for i in buffer.buffer.iter_mut() {
-            *i = u32::MAX; 
-        }
-
+        world.handle_user_input(&window);
+        world.update();
+        world.display(&mut buffer);
 
         window
-            .update_with_buffer(&buffer.buffer, WIDTH, HEIGHT)
+            .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
             .unwrap();
+        
     }
 }
 
@@ -210,6 +264,28 @@ mod test {
     fn test_bad_index_height() {
         let mut buffer = WindowBuffer::new(4, 4);
         buffer[(5, 0)] = 0;
+    }
+
+    #[test]
+    fn test_index() {
+        let mut buffer = WindowBuffer::new(4, 4);
+        buffer[(0, 1)] = 1;
+        buffer[(0, 3)] = 3;
+        buffer[(1, 0)] = 4;
+        buffer[(1, 2)] = 6;
+        buffer[(2, 1)] = 9;
+        buffer[(2, 3)] = 11;
+        buffer[(3, 0)] = 12;
+        buffer[(3, 2)] = 14;
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .#.#
+        #.#.
+        .#.#
+        #.#.
+        "###
+        );
     }
     
 }
