@@ -1,11 +1,10 @@
-use minifb::{Key, Window, WindowOptions};
-use std::fmt;
 use insta::assert_snapshot;
-use minifb::{MouseMode, MouseButton};
+use minifb::{Key, Window, WindowOptions};
+use minifb::{MouseButton, MouseMode};
+use std::fmt;
 
-
-const WIDTH: usize = 640;
-const HEIGHT: usize = 360;
+const WIDTH: usize = 160;
+const HEIGHT: usize = 90;
 
 //COLOURS MANAGEMENT
 pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
@@ -18,12 +17,11 @@ pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
 
     let final_number = new_red | new_green | c;
 
-    return final_number
-    
+    return final_number;
 }
 //COLOURS MANAGEMENT END
 
-// GRID CREATION 
+// GRID CREATION
 pub struct WindowBuffer {
     width: usize,
     height: usize,
@@ -55,17 +53,15 @@ impl WindowBuffer {
 
 impl fmt::Display for WindowBuffer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         let line_len = self.buffer.chunks(self.width);
-        for i in line_len{
-            for a in i{
+        for i in line_len {
+            for a in i {
                 match a {
                     0 => f.write_str(".")?,
                     _ => f.write_str("#")?,
-                    
-                } 
+                }
             }
-            f.write_str("\n")?;  
+            f.write_str("\n")?;
         }
         Ok(())
     }
@@ -122,7 +118,6 @@ struct World {
 }
 
 impl World {
-
     pub fn update(&mut self) {
         // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
         for sand in self.world.iter_mut() {
@@ -156,7 +151,10 @@ fn main() {
         "Test - ESC to exit",
         WIDTH,
         HEIGHT,
-        WindowOptions::default(),
+        WindowOptions {
+            scale: minifb::Scale::X8,
+            ..WindowOptions::default()
+        },
     )
     .unwrap_or_else(|e| {
         panic!("{}", e);
@@ -174,7 +172,6 @@ fn main() {
         window
             .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
             .unwrap();
-        
     }
 }
 
@@ -287,5 +284,4 @@ mod test {
         "###
         );
     }
-    
 }
