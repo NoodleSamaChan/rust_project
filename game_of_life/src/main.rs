@@ -1,7 +1,9 @@
 use insta::assert_snapshot;
 use minifb::{Key, Window, WindowOptions};
 use minifb::{MouseButton, MouseMode};
+use proptest::strategy::W;
 use std::fmt;
+use std::time::{Instant, Duration};
 
 const WIDTH: usize = 160;
 const HEIGHT: usize = 90;
@@ -48,6 +50,71 @@ impl WindowBuffer {
 
     pub fn buffer(&self) -> Vec<u32> {
         self.buffer.clone()
+    }
+    pub fn update(&mut self) {
+        self.check_surroundings()
+    }
+
+    pub fn get(&self, x: isize, y: isize) -> Option<u32> {
+        if (x >= 0) && ((x as usize) < self.width()) && (y >= 0) && ((y as usize) < self.height()) {
+            Some(self[(x as usize, y as usize)])
+        } else {
+            None
+        }
+    }
+
+    pub fn check_surroundings(&mut self) {
+        let mut colored_cells_counter: usize = 0;
+
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let x = x as isize;
+                let y = y as isize;
+
+                if self.get(x - 1, y - 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x - 1, y) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x - 1, y + 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x, y - 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x, y + 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x + 1, y - 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x + 1, y) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+                if self.get(x + 1, y + 1) == Some(u32::MAX) {
+                    colored_cells_counter += 1;
+                }
+
+                if colored_cells_counter < 2 || colored_cells_counter > 3 {
+                    self[(x as usize, y as usize)] = 0;
+                } else if colored_cells_counter == 2 || colored_cells_counter == 3 {
+                    continue;
+                } else if colored_cells_counter == 3 && self[(x as usize, y as usize)] == 0 {
+                    self[(x as usize, y as usize)] = u32::MAX;
+                }
+
+                colored_cells_counter = 0;
+            }
+        }
+    }
+
+    pub fn handle_user_input(&mut self, window: &Window) {
+        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
+            if window.get_mouse_down(MouseButton::Left) {
+                self[(x as usize, y as usize)] = u32::MAX;
+            }
+        }
     }
 }
 
@@ -107,43 +174,6 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 }
 // GRID CREATION END
 
-// CELLS CREATION
-struct Sand {
-    x: usize,
-    y: usize,
-}
-
-struct World {
-    world: Vec<Sand>,
-}
-
-impl World {
-    pub fn update(&mut self) {
-        // on va modifier les grains donc on doit itérer en mode mutable sur les grains de sable
-        for sand in self.world.iter_mut() {
-            sand.y;
-        }
-    }
-
-    pub fn display(&self, buffer: &mut WindowBuffer) {
-        for sand in self.world.iter() {
-            buffer[(sand.x, sand.y)] = u32::MAX;
-        }
-    }
-
-    pub fn handle_user_input(&mut self, window: &Window) {
-        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
-            if window.get_mouse_down(MouseButton::Left) {
-                self.world.push(Sand {
-                    x: x as usize,
-                    y: y as usize,
-                });
-            }
-        }
-    }
-}
-// CELLS CREATION END
-
 fn main() {
     let mut buffer = WindowBuffer::new(WIDTH, HEIGHT);
 
@@ -160,15 +190,17 @@ fn main() {
         panic!("{}", e);
     });
 
-    let mut world = World { world: Vec::new() };
-
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        world.handle_user_input(&window);
-        world.update();
-        world.display(&mut buffer);
+    let mut instant = Instant::now();
 
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        buffer.handle_user_input(&window);
+        let two_seconds = Duration::from_secs(2);
+        if instant.elapsed() >= two_seconds {
+            buffer.update();
+            instant = Instant::now();
+        }
         window
             .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
             .unwrap();
