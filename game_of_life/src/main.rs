@@ -105,10 +105,6 @@ impl WindowBuffer {
                     next_iteration[(x as usize, y as usize)] = u32::MAX;
                 }
 
-                if (x, y) == (1, 1) {
-                    dbg!(colored_cells_counter);
-                  }
-
                 colored_cells_counter = 0;
             }
         }
