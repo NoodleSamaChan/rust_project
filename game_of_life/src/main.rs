@@ -65,6 +65,7 @@ impl WindowBuffer {
 
     pub fn check_surroundings(&mut self) {
         let mut colored_cells_counter: usize = 0;
+        let mut next_iteration = WindowBuffer{width: self.width(), height: self.height(), buffer: self.buffer()};
 
         for x in 0..self.width {
             for y in 0..self.height {
@@ -91,22 +92,24 @@ impl WindowBuffer {
                 }
                 if self.get(x + 1, y) == Some(u32::MAX) {
                     colored_cells_counter += 1;
+                    dbg!(self.get(x + 1, y));
                 }
                 if self.get(x + 1, y + 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
 
                 if colored_cells_counter < 2 || colored_cells_counter > 3 {
-                    self[(x as usize, y as usize)] = 0;
+                    next_iteration[(x as usize, y as usize)] = 0;
                 } else if colored_cells_counter == 2 || colored_cells_counter == 3 {
-                    continue;
+                    next_iteration[(x as usize, y as usize)] = self[(x as usize, y as usize)]
                 } else if colored_cells_counter == 3 && self[(x as usize, y as usize)] == 0 {
-                    self[(x as usize, y as usize)] = u32::MAX;
+                    next_iteration[(x as usize, y as usize)] = u32::MAX;
                 }
 
                 colored_cells_counter = 0;
             }
         }
+        *self = next_iteration;
     }
 
     pub fn handle_user_input(&mut self, window: &Window) {
@@ -313,6 +316,102 @@ mod test {
         #.#.
         .#.#
         #.#.
+        "###
+        );
+    }
+
+    #[test]
+    fn cells_life_square() {
+        let mut buffer = WindowBuffer::new(5, 4);
+        buffer[(1, 1)] = 1;
+        buffer[(1, 2)] = 2;
+        buffer[(2, 1)] = 3;
+        buffer[(2, 2)] = 4;
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        .##..
+        .##..
+        .....
+        "###
+        );
+        buffer.update();
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        .....
+        .....
+        .....
+        "###
+        );
+    }
+
+    #[test]
+    fn cells_life_line() {
+        let mut buffer = WindowBuffer::new(5, 4);
+        buffer[(1, 1)] = 1;
+        buffer[(1, 2)] = 2;
+        buffer[(1, 3)] = 3;
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        .#...
+        .#...
+        .#...
+        "###
+        );
+        buffer.update();
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        .....
+        .....
+        .....
+        .....
+        "###
+        );
+    }
+
+    #[test]
+    fn cells_life_strange_shape() {
+        let mut buffer = WindowBuffer::new(10, 10);
+        buffer[(2, 0)] = 1;
+        buffer[(3, 1)] = 2;
+        buffer[(1, 2)] = 3;
+        buffer[(2, 2)] = 3;
+        buffer[(3, 2)] = 3;
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ..#.......
+        ...#......
+        .###......
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        "###
+        );
+        buffer.update();
+        assert_snapshot!(
+            buffer.to_string(),
+            @r###"
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
+        ..........
         "###
         );
     }
