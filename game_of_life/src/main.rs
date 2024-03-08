@@ -5,9 +5,20 @@ use proptest::strategy::W;
 use std::fmt;
 use std::io::repeat;
 use std::time::{Duration, Instant};
+use clap::Parser;
 
-const WIDTH: usize = 160;
-const HEIGHT: usize = 90;
+//CLI
+#[derive(Parser)]
+#[derive(Debug)]
+#[command(version, about, long_about = None)]
+struct Cli {
+    /// Optional name to operate on
+    #[arg(long, default_value_t = 160)]
+    width: usize,
+    #[arg(long, default_value_t = 90)]
+    height: usize,
+}
+//CLI END
 
 //COLOURS MANAGEMENT
 pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
@@ -235,12 +246,14 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 // GRID CREATION END
 
 fn main() {
-    let mut buffer = WindowBuffer::new(WIDTH, HEIGHT, 0, Instant::now(), 2);
+    let cli = Cli::parse();
+
+    let mut buffer = WindowBuffer::new(cli.width, cli.height, 0, Instant::now(), 2);
 
     let mut window = Window::new(
         "Test - ESC to exit",
-        WIDTH,
-        HEIGHT,
+        cli.width,
+        cli.height,
         WindowOptions {
             scale: minifb::Scale::X8,
             ..WindowOptions::default()
@@ -253,20 +266,18 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     let mut instant = Instant::now();
-    let mut speed: u64 = 2;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
 
         buffer.handle_user_input(&window);
-        let two_seconds = Duration::from_secs(speed);
+        let two_seconds = Duration::from_secs(buffer.speed());
         if instant.elapsed() >= two_seconds {
             buffer.update();
             instant = Instant::now();
         }
-        println!("{}", buffer.speed());
 
         window
-            .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
+            .update_with_buffer(&buffer.buffer(), cli.width, cli.height)
             .unwrap();
     }
 }
