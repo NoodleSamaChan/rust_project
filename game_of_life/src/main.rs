@@ -32,6 +32,7 @@ pub struct WindowBuffer {
     buffer: Vec<u32>,
     space_count: usize,
     small_break_timer: Instant,
+    speed: u64,
 }
 
 impl WindowBuffer {
@@ -40,6 +41,7 @@ impl WindowBuffer {
         height: usize,
         space_count: usize,
         small_break_timer: Instant,
+        speed: u64,
     ) -> Self {
         Self {
             width,
@@ -47,6 +49,7 @@ impl WindowBuffer {
             buffer: vec![0; width * height],
             space_count,
             small_break_timer,
+            speed,
         }
     }
 
@@ -66,6 +69,9 @@ impl WindowBuffer {
     }
     pub fn small_break_timer(&mut self) -> Instant {
         self.small_break_timer
+    }
+    pub fn speed(&mut self) -> u64 {
+        self.speed
     }
     pub fn update(&mut self) {
 
@@ -90,6 +96,7 @@ impl WindowBuffer {
             buffer: self.buffer(),
             space_count: self.space_count(),
             small_break_timer: self.small_break_timer(),
+            speed: self.speed(),
         };
 
         for x in 0..self.width {
@@ -150,6 +157,16 @@ impl WindowBuffer {
             self.buffer = vec![0; self.width() * self.height()];
         }
 
+        if window.is_key_pressed(Key::E, KeyRepeat::No) {
+            if self.speed > 0 {
+                self.speed -= 1;
+            }
+        }
+
+        if window.is_key_pressed(Key::R, KeyRepeat::No) {
+            self.speed += 1;
+        }
+
         let small_break = Duration::from_millis(0);
         if self.small_break_timer.elapsed() >= small_break {
             window.get_keys_released().iter().for_each(|key| match key {
@@ -158,7 +175,6 @@ impl WindowBuffer {
             });
             self.small_break_timer = Instant::now();
         }
-
     }
 }
 
@@ -219,7 +235,7 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 // GRID CREATION END
 
 fn main() {
-    let mut buffer = WindowBuffer::new(WIDTH, HEIGHT, 0, Instant::now());
+    let mut buffer = WindowBuffer::new(WIDTH, HEIGHT, 0, Instant::now(), 2);
 
     let mut window = Window::new(
         "Test - ESC to exit",
@@ -237,15 +253,17 @@ fn main() {
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     let mut instant = Instant::now();
+    let mut speed: u64 = 2;
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
 
         buffer.handle_user_input(&window);
-        let two_seconds = Duration::from_secs(2);
+        let two_seconds = Duration::from_secs(speed);
         if instant.elapsed() >= two_seconds {
             buffer.update();
             instant = Instant::now();
         }
+        println!("{}", buffer.speed());
 
         window
             .update_with_buffer(&buffer.buffer(), WIDTH, HEIGHT)
@@ -269,7 +287,7 @@ mod test {
 
     #[test]
     fn display_window_buffer() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
         assert_eq!(
             buffer.to_string(),
             "....
@@ -298,7 +316,7 @@ mod test {
 
     #[test]
     fn display_window_buffer2() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
         assert_snapshot!(
             buffer.to_string(),
             @r###"
@@ -330,20 +348,20 @@ mod test {
     #[test]
     #[should_panic]
     fn test_bad_index_width() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
         buffer[(0, 5)] = 0;
     }
 
     #[test]
     #[should_panic]
     fn test_bad_index_height() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
         buffer[(5, 0)] = 0;
     }
 
     #[test]
     fn test_index() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
         buffer[(0, 1)] = 1;
         buffer[(0, 3)] = 3;
         buffer[(1, 0)] = 4;
@@ -365,7 +383,7 @@ mod test {
 
     #[test]
     fn cells_life_square() {
-        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now(), 0);
         buffer[(1, 1)] = u32::MAX;
         buffer[(1, 2)] = u32::MAX;
         buffer[(2, 1)] = u32::MAX;
@@ -393,7 +411,7 @@ mod test {
 
     #[test]
     fn cells_life_line() {
-        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now(), 0);
         buffer[(1, 1)] = u32::MAX;
         buffer[(1, 2)] = u32::MAX;
         buffer[(1, 3)] = u32::MAX;
@@ -420,7 +438,7 @@ mod test {
 
     #[test]
     fn cells_life_strange_shape() {
-        let mut buffer = WindowBuffer::new(10, 10, 0, Instant::now());
+        let mut buffer = WindowBuffer::new(10, 10, 0, Instant::now(), 0);
         buffer[(2, 0)] = u32::MAX;
         buffer[(3, 1)] = u32::MAX;
         buffer[(1, 2)] = u32::MAX;
