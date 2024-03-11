@@ -6,6 +6,10 @@ use std::fmt;
 use std::io::repeat;
 use std::time::{Duration, Instant};
 use clap::Parser;
+use std::fs::File;
+use std::fs;
+use std::io::Write;
+use std::io::Read;
 
 //CLI
 #[derive(Parser)]
@@ -17,6 +21,8 @@ struct Cli {
     width: usize,
     #[arg(long, default_value_t = 90)]
     height: usize,
+    #[arg(long)]
+    file_path: Option<String>,
 }
 //CLI END
 
@@ -37,8 +43,8 @@ pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
 
 // GRID CREATION
 pub struct WindowBuffer {
-    width: usize,
-    height: usize,
+    width: u32,
+    height: u32,
 
     buffer: Vec<u32>,
     space_count: usize,
@@ -156,7 +162,7 @@ impl WindowBuffer {
         *self = next_iteration;
     }
 
-    pub fn handle_user_input(&mut self, window: & Window) {
+    pub fn handle_user_input(&mut self, window: & Window, cli: &Cli) -> std::io::Result<()>  {
 
         if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
             if window.get_mouse_down(MouseButton::Left) {
@@ -166,6 +172,19 @@ impl WindowBuffer {
 
         if window.is_key_pressed(Key::Q, KeyRepeat::No) {
             self.buffer = vec![0; self.width() * self.height()];
+        }
+
+        if window.is_key_pressed(Key::S, KeyRepeat::No) {
+            let mut save_file = File::create(cli.file_path.clone().unwrap())?;
+            save_file.write_all(&self.width().to_be_bytes())?;
+            save_file.write_all(&self.height().to_be_bytes())?;
+            save_file.write_all(&self.speed().to_be_bytes())?;
+
+            for number in &self.buffer(){
+                save_file.write_all(&number.to_be_bytes())?;
+            }
+
+            save_file.flush()?; 
         }
 
         if window.is_key_pressed(Key::E, KeyRepeat::No) {
@@ -186,7 +205,10 @@ impl WindowBuffer {
             });
             self.small_break_timer = Instant::now();
         }
+
+        Ok(())
     }
+
 }
 
 impl fmt::Display for WindowBuffer {
@@ -245,7 +267,7 @@ impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
 }
 // GRID CREATION END
 
-fn main() {
+fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
 
     let mut buffer = WindowBuffer::new(cli.width, cli.height, 0, Instant::now(), 2);
@@ -263,13 +285,34 @@ fn main() {
         panic!("{}", e);
     });
 
+    if cli.file_path != None {
+        let mut save_file = File::open(cli.file_path.unwrap())?;
+
+        let mut saved_chunk: [u8; 4] = [0; 4];
+        save_file.read_exact(&mut saved_chunk)?;
+        buffer.width = u32::from_be_bytes(saved_chunk);
+
+        save_file.read_exact(&mut saved_chunk)?;
+        buffer.height = u32::from_be_bytes(saved_chunk);
+
+        save_file.read_exact(&mut saved_chunk)?;
+        buffer.speed = u32::from_be_bytes(saved_chunk);
+
+        save_file.read_exact(&mut saved_chunk)?;
+
+        loop {
+            save_file.read_exact(&mut saved_chunk)?; // là s’il y a une erreur il faut break et sortir de la boucle
+            buffer.buffer.push(u32::from_be_bytes(saved_chunk));
+        }
+    }
+
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
     let mut instant = Instant::now();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
 
-        buffer.handle_user_input(&window);
+        buffer.handle_user_input(&window, &cli);
         let two_seconds = Duration::from_secs(buffer.speed());
         if instant.elapsed() >= two_seconds {
             buffer.update();
@@ -280,6 +323,8 @@ fn main() {
             .update_with_buffer(&buffer.buffer(), cli.width, cli.height)
             .unwrap();
     }
+
+    Ok(())
 }
 
 //TESTS
