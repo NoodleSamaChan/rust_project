@@ -288,10 +288,22 @@ fn main() -> std::io::Result<()> {
         let mut saved_chunk: [u8; 8] = [0; 8];
         
         save_file.read_exact(&mut saved_chunk)?;
-        buffer.width = usize::from_be_bytes(saved_chunk);
+        let new_width = usize::from_be_bytes(saved_chunk);
+
+        if new_width != cli.width {
+            panic!("width different from saved width");
+        }
+
+        buffer.width = new_width;
 
         save_file.read_exact(&mut saved_chunk)?;
-        buffer.height = usize::from_be_bytes(saved_chunk);
+        let new_height = usize::from_be_bytes(saved_chunk);
+
+        if new_height != cli.height {
+            panic!("height different from saved height");
+        }
+
+        buffer.height = new_height;
 
         save_file.read_exact(&mut saved_chunk)?;
         buffer.speed = u64::from_be_bytes(saved_chunk);
@@ -302,11 +314,6 @@ fn main() -> std::io::Result<()> {
             save_file.read_exact(&mut saved_chunk_2)?; 
             buffer.buffer.push(u32::from_be_bytes(saved_chunk_2));
         }
-
-//        loop {
-//            save_file.read_exact(&mut saved_chunk)?; // là s’il y a une erreur il faut break et sortir de la boucle
-//            buffer.buffer.push(u32::from_be_bytes(saved_chunk_2));
-//        }
     }
     dbg!(&buffer.height(), &buffer.width(), &buffer.speed(), &buffer.buffer());
 
