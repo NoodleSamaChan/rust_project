@@ -1,6 +1,5 @@
 use minifb::{Key, Window, WindowOptions};
 use std::fmt;
-use insta::assert_display_snapshot;
 use rand::Rng;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
