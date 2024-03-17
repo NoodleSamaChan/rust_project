@@ -1,13 +1,12 @@
-use insta::assert_snapshot;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use minifb::{MouseButton, MouseMode};
-use proptest::bits::BitSetLike;
 use std::fmt;
 use std::time::{Duration, Instant};
 use clap::Parser;
 use std::fs::File;
 use std::io::Write;
 use std::io::Read;
+use window_rs::WindowBuffer;
 
 //CLI
 #[derive(Parser)]
@@ -41,45 +40,28 @@ pub fn rgb(red: u8, green: u8, blue: u8) -> u32 {
 
 // GRID CREATION
 #[derive(Debug)]
-pub struct WindowBuffer {
-    width: usize,
-    height: usize,
-
-    buffer: Vec<u32>,
+pub struct World {
+    window_buffer: WindowBuffer,
     space_count: usize,
     small_break_timer: Instant,
     speed: u64,
 }
 
-impl WindowBuffer {
+impl World {
     pub fn new(
-        width: usize,
-        height: usize,
+        window_buffer: WindowBuffer,
         space_count: usize,
         small_break_timer: Instant,
         speed: u64,
     ) -> Self {
         Self {
-            width,
-            height,
-            buffer: vec![0; width * height],
+            window_buffer,
             space_count,
             small_break_timer,
             speed,
         }
     }
 
-    pub fn width(&self) -> usize {
-        self.width
-    }
-
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
-    pub fn buffer(&self) -> Vec<u32> {
-        self.buffer.clone()
-    }
     pub fn space_count(&mut self) -> usize {
         self.space_count
     }
@@ -96,52 +78,38 @@ impl WindowBuffer {
         }
     }
 
-    pub fn get(&self, x: isize, y: isize) -> Option<u32> {
-        if (x >= 0) && ((x as usize) < self.width()) && (y >= 0) && ((y as usize) < self.height()) {
-            Some(self[(x as usize, y as usize)])
-        } else {
-            None
-        }
-    }
 
     pub fn check_surroundings(&mut self) {
         let mut colored_cells_counter: usize = 0;
-        let mut next_iteration = WindowBuffer {
-            width: self.width(),
-            height: self.height(),
-            buffer: self.buffer(),
-            space_count: self.space_count(),
-            small_break_timer: self.small_break_timer(),
-            speed: self.speed(),
-        };
+        let mut next_iteration = WindowBuffer::new(self.window_buffer.width(), self.window_buffer.height());
 
-        for x in 0..self.width {
-            for y in 0..self.height {
+        for x in 0..self.window_buffer.width() {
+            for y in 0..self.window_buffer.height() {
                 let x = x as isize;
                 let y = y as isize;
 
-                if self.get(x - 1, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y - 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x - 1, y) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x - 1, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y + 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x, y - 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x, y + 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x + 1, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x + 1, y - 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if (self.get(x + 1, y)) == Some(u32::MAX) {
+                if (self.window_buffer.get(x + 1, y)) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
-                if self.get(x + 1, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x + 1, y + 1) == Some(u32::MAX) {
                     colored_cells_counter += 1;
                 }
 
@@ -149,28 +117,28 @@ impl WindowBuffer {
                     next_iteration[(x as usize, y as usize)] = 0;
                 }
                 if colored_cells_counter == 2 || colored_cells_counter == 3 {
-                    next_iteration[(x as usize, y as usize)] = self[(x as usize, y as usize)]
+                    next_iteration[(x as usize, y as usize)] = self.window_buffer[(x as usize, y as usize)]
                 }
-                if colored_cells_counter == 3 && self[(x as usize, y as usize)] == 0 {
+                if colored_cells_counter == 3 && self.window_buffer[(x as usize, y as usize)] == 0 {
                     next_iteration[(x as usize, y as usize)] = u32::MAX;
                 }
 
                 colored_cells_counter = 0;
             }
         }
-        *self = next_iteration;
+        self.window_buffer = next_iteration;
     }
 
     pub fn handle_user_input(&mut self, window: & Window, cli: &Cli) -> std::io::Result<()>  {
 
         if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
             if window.get_mouse_down(MouseButton::Left) {
-                self[(x as usize, y as usize)] = u32::MAX;
+                self.window_buffer[(x as usize, y as usize)] = u32::MAX;
             }
         }
 
         if window.is_key_pressed(Key::Q, KeyRepeat::No) {
-            self.buffer = vec![0; self.width() * self.height()];
+            self.window_buffer.reset();
         }
 
         if window.is_key_pressed(Key::S, KeyRepeat::No) {
@@ -180,11 +148,11 @@ impl WindowBuffer {
             if cli.file_path != None{
                 save_file = File::create(cli.file_path.clone().unwrap())?;
             }
-            save_file.write_all(&self.width().to_be_bytes())?;
-            save_file.write_all(&self.height().to_be_bytes())?;
+            save_file.write_all(&self.window_buffer.width().to_be_bytes())?;
+            save_file.write_all(&self.window_buffer.height().to_be_bytes())?;
             save_file.write_all(&self.speed().to_be_bytes())?;
 
-            for number in &self.buffer(){
+            for number in &self.window_buffer.buffer(){
                 save_file.write_all(&number.to_be_bytes())?;
             }
 
@@ -215,73 +183,15 @@ impl WindowBuffer {
 
 }
 
-impl fmt::Display for WindowBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let line_len = self.buffer.chunks(self.width);
-        for i in line_len {
-            for a in i {
-                match a {
-                    0 => f.write_str(".")?,
-                    _ => f.write_str("#")?,
-                }
-            }
-            f.write_str("\n")?;
-        }
-        Ok(())
-    }
-}
-
-impl std::ops::Index<(usize, usize)> for WindowBuffer {
-    type Output = u32;
-
-    fn index(&self, (x, y): (usize, usize)) -> &Self::Output {
-        if x >= self.width {
-            panic!(
-                "Tried to index in a buffer of width {} with a x of {}",
-                self.width, x
-            );
-        }
-        if y >= self.height {
-            panic!(
-                "Tried to index in a buffer of height {} with a y of {}",
-                self.height, y
-            );
-        }
-
-        &self.buffer[y * self.width + x]
-    }
-}
-impl std::ops::IndexMut<(usize, usize)> for WindowBuffer {
-    fn index_mut(&mut self, (x, y): (usize, usize)) -> &mut Self::Output {
-        if x >= self.width {
-            panic!(
-                "Tried to index in a buffer of width {} with a x of {}",
-                self.width, x
-            );
-        }
-        if y >= self.height {
-            panic!(
-                "Tried to index in a buffer of height {} with a y of {}",
-                self.height, y
-            );
-        }
-
-        &mut self.buffer[y * self.width + x]
-    }
-}
-// GRID CREATION END
 
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
 
-    let mut buffer = WindowBuffer::new(cli.width, cli.height, 0, Instant::now(), 2);
+    let mut buffer = World::new(WindowBuffer::new(cli.width, cli.height), 0, Instant::now(), 2);
 
     if cli.file_path != None {
-        buffer.buffer.clear();
+        buffer.window_buffer.reset();
         buffer.speed = 0;
-        buffer.width = 0;
-        buffer.height = 0;
-
 
         let mut save_file = File::open(cli.file_path.clone().unwrap())?;
 
@@ -294,8 +204,6 @@ fn main() -> std::io::Result<()> {
             panic!("width different from saved width");
         }
 
-        buffer.width = new_width;
-
         save_file.read_exact(&mut saved_chunk)?;
         let new_height = usize::from_be_bytes(saved_chunk);
 
@@ -303,24 +211,24 @@ fn main() -> std::io::Result<()> {
             panic!("height different from saved height");
         }
 
-        buffer.height = new_height;
-
         save_file.read_exact(&mut saved_chunk)?;
         buffer.speed = u64::from_be_bytes(saved_chunk);
 
         let mut saved_chunk_2: [u8; 4] = [0; 4];
         
-        for _ in 0..(buffer.width * buffer.height) {
-            save_file.read_exact(&mut saved_chunk_2)?; 
-            buffer.buffer.push(u32::from_be_bytes(saved_chunk_2));
+
+        for y in 0..buffer.window_buffer.height(){
+            for x in 0..buffer.window_buffer.width(){
+                save_file.read_exact(&mut saved_chunk_2)?; 
+                buffer.window_buffer[(x, y)] = u32::from_be_bytes(saved_chunk_2)
+            }
         }
     }
-    dbg!(&buffer.height(), &buffer.width(), &buffer.speed(), &buffer.buffer());
 
     let mut window = Window::new(
         "Test - ESC to exit",
-        buffer.width(),
-        buffer.height(),
+        buffer.window_buffer.width(),
+        buffer.window_buffer.height(),
         WindowOptions {
             scale: minifb::Scale::X8,
             ..WindowOptions::default()
@@ -344,7 +252,7 @@ fn main() -> std::io::Result<()> {
         }
 
         window
-            .update_with_buffer(&buffer.buffer(), cli.width, cli.height)
+            .update_with_buffer(&buffer.window_buffer.buffer(), cli.width, cli.height)
             .unwrap();
     }
 
@@ -356,6 +264,8 @@ fn main() -> std::io::Result<()> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use proptest::bits::BitSetLike;
+    use insta::assert_snapshot;
 
     #[test]
     fn test_rgb() {
