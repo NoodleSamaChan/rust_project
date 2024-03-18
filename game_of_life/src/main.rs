@@ -1,16 +1,15 @@
+use clap::Parser;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use minifb::{MouseButton, MouseMode};
 use std::fmt;
-use std::time::{Duration, Instant};
-use clap::Parser;
 use std::fs::File;
-use std::io::Write;
 use std::io::Read;
+use std::io::Write;
+use std::time::{Duration, Instant};
 use window_rs::WindowBuffer;
 
 //CLI
-#[derive(Parser)]
-#[derive(Debug)]
+#[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// Optional name to operate on
@@ -72,16 +71,15 @@ impl World {
         self.speed
     }
     pub fn update(&mut self) {
-
         if self.space_count % 2 == 0 {
             self.check_surroundings()
         }
     }
 
-
     pub fn check_surroundings(&mut self) {
         let mut colored_cells_counter: usize = 0;
-        let mut next_iteration = WindowBuffer::new(self.window_buffer.width(), self.window_buffer.height());
+        let mut next_iteration =
+            WindowBuffer::new(self.window_buffer.width(), self.window_buffer.height());
 
         for x in 0..self.window_buffer.width() {
             for y in 0..self.window_buffer.height() {
@@ -117,7 +115,8 @@ impl World {
                     next_iteration[(x as usize, y as usize)] = 0;
                 }
                 if colored_cells_counter == 2 || colored_cells_counter == 3 {
-                    next_iteration[(x as usize, y as usize)] = self.window_buffer[(x as usize, y as usize)]
+                    next_iteration[(x as usize, y as usize)] =
+                        self.window_buffer[(x as usize, y as usize)]
                 }
                 if colored_cells_counter == 3 && self.window_buffer[(x as usize, y as usize)] == 0 {
                     next_iteration[(x as usize, y as usize)] = u32::MAX;
@@ -129,8 +128,7 @@ impl World {
         self.window_buffer = next_iteration;
     }
 
-    pub fn handle_user_input(&mut self, window: & Window, cli: &Cli) -> std::io::Result<()>  {
-
+    pub fn handle_user_input(&mut self, window: &Window, cli: &Cli) -> std::io::Result<()> {
         if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
             if window.get_mouse_down(MouseButton::Left) {
                 self.window_buffer[(x as usize, y as usize)] = u32::MAX;
@@ -142,21 +140,20 @@ impl World {
         }
 
         if window.is_key_pressed(Key::S, KeyRepeat::No) {
-
             let mut save_file = File::create("save_file")?;
 
-            if cli.file_path != None{
+            if cli.file_path != None {
                 save_file = File::create(cli.file_path.clone().unwrap())?;
             }
             save_file.write_all(&self.window_buffer.width().to_be_bytes())?;
             save_file.write_all(&self.window_buffer.height().to_be_bytes())?;
             save_file.write_all(&self.speed().to_be_bytes())?;
 
-            for number in &self.window_buffer.buffer(){
+            for number in &self.window_buffer.buffer() {
                 save_file.write_all(&number.to_be_bytes())?;
             }
 
-            save_file.flush()?; 
+            save_file.flush()?;
         }
 
         if window.is_key_pressed(Key::E, KeyRepeat::No) {
@@ -180,14 +177,17 @@ impl World {
 
         Ok(())
     }
-
 }
-
 
 fn main() -> std::io::Result<()> {
     let cli = Cli::parse();
 
-    let mut buffer = World::new(WindowBuffer::new(cli.width, cli.height), 0, Instant::now(), 2);
+    let mut buffer = World::new(
+        WindowBuffer::new(cli.width, cli.height),
+        0,
+        Instant::now(),
+        2,
+    );
 
     if cli.file_path != None {
         buffer.window_buffer.reset();
@@ -196,7 +196,7 @@ fn main() -> std::io::Result<()> {
         let mut save_file = File::open(cli.file_path.clone().unwrap())?;
 
         let mut saved_chunk: [u8; 8] = [0; 8];
-        
+
         save_file.read_exact(&mut saved_chunk)?;
         let new_width = usize::from_be_bytes(saved_chunk);
 
@@ -215,11 +215,10 @@ fn main() -> std::io::Result<()> {
         buffer.speed = u64::from_be_bytes(saved_chunk);
 
         let mut saved_chunk_2: [u8; 4] = [0; 4];
-        
 
-        for y in 0..buffer.window_buffer.height(){
-            for x in 0..buffer.window_buffer.width(){
-                save_file.read_exact(&mut saved_chunk_2)?; 
+        for y in 0..buffer.window_buffer.height() {
+            for x in 0..buffer.window_buffer.width() {
+                save_file.read_exact(&mut saved_chunk_2)?;
                 buffer.window_buffer[(x, y)] = u32::from_be_bytes(saved_chunk_2)
             }
         }
@@ -243,7 +242,6 @@ fn main() -> std::io::Result<()> {
     let mut instant = Instant::now();
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
-
         let _ = buffer.handle_user_input(&window, &cli);
         let two_seconds = Duration::from_secs(buffer.speed());
         if instant.elapsed() >= two_seconds {
@@ -264,8 +262,8 @@ fn main() -> std::io::Result<()> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use proptest::bits::BitSetLike;
     use insta::assert_snapshot;
+    use proptest::bits::BitSetLike;
 
     #[test]
     fn test_rgb() {
@@ -275,110 +273,14 @@ mod test {
     }
 
     #[test]
-    fn display_window_buffer() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
-        assert_eq!(
-            buffer.to_string(),
-            "....
-....
-....
-....
-"
-        );
-        buffer.buffer[1] = 1;
-        buffer.buffer[3] = 3;
-        buffer.buffer[4] = 4;
-        buffer.buffer[6] = 6;
-        buffer.buffer[9] = 9;
-        buffer.buffer[11] = 11;
-        buffer.buffer[12] = 12;
-        buffer.buffer[14] = 14;
-        assert_eq!(
-            buffer.to_string(),
-            ".#.#
-#.#.
-.#.#
-#.#.
-"
-        );
-    }
-
-    #[test]
-    fn display_window_buffer2() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
-        assert_snapshot!(
-            buffer.to_string(),
-            @r###"
-        ....
-        ....
-        ....
-        ....
-        "###
-        );
-        buffer.buffer[1] = 1;
-        buffer.buffer[3] = 3;
-        buffer.buffer[4] = 4;
-        buffer.buffer[6] = 6;
-        buffer.buffer[9] = 9;
-        buffer.buffer[11] = 11;
-        buffer.buffer[12] = 12;
-        buffer.buffer[14] = 14;
-        assert_snapshot!(
-            buffer.to_string(),
-            @r###"
-        .#.#
-        #.#.
-        .#.#
-        #.#.
-        "###
-        );
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_bad_index_width() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
-        buffer[(0, 5)] = 0;
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_bad_index_height() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
-        buffer[(5, 0)] = 0;
-    }
-
-    #[test]
-    fn test_index() {
-        let mut buffer = WindowBuffer::new(4, 4, 0, Instant::now(), 0);
-        buffer[(0, 1)] = 1;
-        buffer[(0, 3)] = 3;
-        buffer[(1, 0)] = 4;
-        buffer[(1, 2)] = 6;
-        buffer[(2, 1)] = 9;
-        buffer[(2, 3)] = 11;
-        buffer[(3, 0)] = 12;
-        buffer[(3, 2)] = 14;
-        assert_snapshot!(
-            buffer.to_string(),
-            @r###"
-        .#.#
-        #.#.
-        .#.#
-        #.#.
-        "###
-        );
-    }
-
-    #[test]
     fn cells_life_square() {
-        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now(), 0);
-        buffer[(1, 1)] = u32::MAX;
-        buffer[(1, 2)] = u32::MAX;
-        buffer[(2, 1)] = u32::MAX;
-        buffer[(2, 2)] = u32::MAX;
+        let mut buffer: World = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0);
+        buffer.window_buffer[(1, 1)] = u32::MAX;
+        buffer.window_buffer[(1, 2)] = u32::MAX;
+        buffer.window_buffer[(2, 1)] = u32::MAX;
+        buffer.window_buffer[(2, 2)] = u32::MAX;
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         .....
         .##..
@@ -388,7 +290,7 @@ mod test {
         );
         buffer.update();
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         .....
         .##..
@@ -400,12 +302,12 @@ mod test {
 
     #[test]
     fn cells_life_line() {
-        let mut buffer = WindowBuffer::new(5, 4, 0, Instant::now(), 0);
-        buffer[(1, 1)] = u32::MAX;
-        buffer[(1, 2)] = u32::MAX;
-        buffer[(1, 3)] = u32::MAX;
+        let mut buffer = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0);
+        buffer.window_buffer[(1, 1)] = u32::MAX;
+        buffer.window_buffer[(1, 2)] = u32::MAX;
+        buffer.window_buffer[(1, 3)] = u32::MAX;
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         .....
         .#...
@@ -415,7 +317,7 @@ mod test {
         );
         buffer.update();
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         .....
         .....
@@ -427,14 +329,14 @@ mod test {
 
     #[test]
     fn cells_life_strange_shape() {
-        let mut buffer = WindowBuffer::new(10, 10, 0, Instant::now(), 0);
-        buffer[(2, 0)] = u32::MAX;
-        buffer[(3, 1)] = u32::MAX;
-        buffer[(1, 2)] = u32::MAX;
-        buffer[(2, 2)] = u32::MAX;
-        buffer[(3, 2)] = u32::MAX;
+        let mut buffer = World::new(WindowBuffer::new(10, 10), 0, Instant::now(), 0);
+        buffer.window_buffer[(2, 0)] = u32::MAX;
+        buffer.window_buffer[(3, 1)] = u32::MAX;
+        buffer.window_buffer[(1, 2)] = u32::MAX;
+        buffer.window_buffer[(2, 2)] = u32::MAX;
+        buffer.window_buffer[(3, 2)] = u32::MAX;
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         ..#.......
         ...#......
@@ -450,7 +352,7 @@ mod test {
         );
         buffer.update();
         assert_snapshot!(
-            buffer.to_string(),
+            buffer.window_buffer.to_string(),
             @r###"
         ..........
         .#.#......
