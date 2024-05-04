@@ -1,12 +1,11 @@
 use clap::Parser;
-use minifb::{Key, KeyRepeat, Window, WindowOptions};
-use minifb::{MouseButton, MouseMode};
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::time::{Duration, Instant};
 use window_rs::WindowBuffer;
+use graphic::{Graphic, Key, minifb::Minifb};
 
 //CLI
 #[derive(Parser, Debug)]
@@ -128,18 +127,18 @@ impl World {
         self.window_buffer = next_iteration;
     }
 
-    pub fn handle_user_input(&mut self, window: &Window, cli: &Cli) -> std::io::Result<()> {
-        if let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) {
-            if window.get_mouse_down(MouseButton::Left) {
+    pub fn handle_user_input <W: Graphic>(&mut self, window: &W, cli: &Cli) -> std::io::Result<()> {
+        if let Some((x, y)) = window.get_mouse_pos(graphic::Mouse::Discard) {
+            if window.get_mouse_down(graphic::Mouse::Left) {
                 self.window_buffer[(x as usize, y as usize)] = u32::MAX;
             }
         }
 
-        if window.is_key_pressed(Key::Q, KeyRepeat::No) {
+        if window.is_key_pressed(graphic::Key::Quit,) {
             self.window_buffer.reset();
         }
 
-        if window.is_key_pressed(Key::S, KeyRepeat::No) {
+        if window.is_key_pressed(graphic::Key::Save) {
             let mut save_file = File::create("save_file")?;
 
             if cli.file_path != None {
@@ -156,20 +155,20 @@ impl World {
             save_file.flush()?;
         }
 
-        if window.is_key_pressed(Key::E, KeyRepeat::No) {
+        if window.is_key_pressed(graphic::Key::Up) {
             if self.speed > 0 {
                 self.speed -= 1;
             }
         }
 
-        if window.is_key_pressed(Key::R, KeyRepeat::No) {
+        if window.is_key_pressed(graphic::Key::Down) {
             self.speed += 1;
         }
 
         let small_break = Duration::from_millis(0);
         if self.small_break_timer.elapsed() >= small_break {
             window.get_keys_released().iter().for_each(|key| match key {
-                Key::Space => self.space_count += 1,
+                graphic::Key::Space => self.space_count += 1,
                 _ => (),
             });
             self.small_break_timer = Instant::now();
@@ -224,20 +223,7 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let mut window = Window::new(
-        "Test - ESC to exit",
-        buffer.window_buffer.width(),
-        buffer.window_buffer.height(),
-        WindowOptions {
-            scale: minifb::Scale::X8,
-            ..WindowOptions::default()
-        },
-    )
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
-
-    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+    let mut window = Minifb::new("Game Of Life - ESC to exit", cli.width, cli.height);
 
     let mut instant = Instant::now();
 
@@ -250,8 +236,8 @@ fn main() -> std::io::Result<()> {
         }
 
         window
-            .update_with_buffer(&buffer.window_buffer.buffer(), cli.width, cli.height)
-            .unwrap();
+            .update_with_buffer(&buffer)
+
     }
 
     Ok(())
