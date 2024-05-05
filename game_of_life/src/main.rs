@@ -12,9 +12,9 @@ use graphic::{Graphic, Key, minifb::Minifb};
 #[command(version, about, long_about = None)]
 pub struct Cli {
     /// Optional name to operate on
-    #[arg(long, default_value_t = 160)]
+    #[arg(long, default_value_t = 30)]
     width: usize,
-    #[arg(long, default_value_t = 90)]
+    #[arg(long, default_value_t = 30)]
     height: usize,
     #[arg(long)]
     file_path: Option<String>,
@@ -236,7 +236,7 @@ fn main() -> std::io::Result<()> {
         }
 
         window
-            .update_with_buffer(&buffer)
+            .update_with_buffer(&buffer.window_buffer)
 
     }
 
