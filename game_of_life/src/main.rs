@@ -1,10 +1,10 @@
 use clap::Parser;
 use game_of_life::Cli;
 use game_of_life::World;
+use window_rs::WindowBuffer;
 use std::fs::File;
 use std::io::Read;
 use web_time::{Duration, Instant};
-use window_rs::WindowBuffer;
 use graphic::{Graphic, Key, minifb::Minifb};
 
 
