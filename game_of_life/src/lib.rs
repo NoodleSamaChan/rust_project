@@ -1,7 +1,7 @@
 use clap::Parser;
 use std::fs::File;
 use std::io::Write;
-use std::time::{Duration, Instant};
+use web_time::{Duration, Instant};
 use window_rs::WindowBuffer;
 use graphic::Graphic;
 
