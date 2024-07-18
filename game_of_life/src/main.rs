@@ -16,6 +16,7 @@ fn main() -> std::io::Result<()> {
         0,
         Instant::now(),
         2,
+        0x0066CC33,
     );
 
     if cli.file_path != None {

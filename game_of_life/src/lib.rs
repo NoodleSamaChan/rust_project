@@ -41,6 +41,7 @@ pub struct World {
     pub space_count: usize,
     pub small_break_timer: Instant,
     pub speed: u64,
+    pub colour_cell: u32,
 }
 
 impl World {
@@ -49,12 +50,14 @@ impl World {
         space_count: usize,
         small_break_timer: Instant,
         speed: u64,
+        colour_cell: u32,
     ) -> Self {
         Self {
             window_buffer,
             space_count,
             small_break_timer,
             speed,
+            colour_cell,
         }
     }
 
@@ -83,28 +86,28 @@ impl World {
                 let x = x as isize;
                 let y = y as isize;
 
-                if self.window_buffer.get(x - 1, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y - 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x - 1, y) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x - 1, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x - 1, y + 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x, y - 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x, y + 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x + 1, y - 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x + 1, y - 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if (self.window_buffer.get(x + 1, y)) == Some(u32::MAX) {
+                if (self.window_buffer.get(x + 1, y)) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
-                if self.window_buffer.get(x + 1, y + 1) == Some(u32::MAX) {
+                if self.window_buffer.get(x + 1, y + 1) == Some(self.colour_cell) {
                     colored_cells_counter += 1;
                 }
 
@@ -116,7 +119,7 @@ impl World {
                         self.window_buffer[(x as usize, y as usize)]
                 }
                 if colored_cells_counter == 3 && self.window_buffer[(x as usize, y as usize)] == 0 {
-                    next_iteration[(x as usize, y as usize)] = u32::MAX;
+                    next_iteration[(x as usize, y as usize)] = self.colour_cell;
                 }
 
                 colored_cells_counter = 0;
@@ -128,7 +131,7 @@ impl World {
     pub fn handle_user_input <W: Graphic>(&mut self, window: &W, cli: &Cli) -> std::io::Result<()> {
         if let Some((x, y)) = window.get_mouse_pos(graphic::Mouse::Discard) {
             if window.get_mouse_down(graphic::Mouse::Left) {
-                self.window_buffer[(x as usize, y as usize)] = u32::MAX;
+                self.window_buffer[(x as usize, y as usize)] = self.colour_cell;
             }
         }
 
@@ -194,11 +197,11 @@ mod test {
 
     #[test]
     fn cells_life_square() {
-        let mut buffer: World = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0);
-        buffer.window_buffer[(1, 1)] = u32::MAX;
-        buffer.window_buffer[(1, 2)] = u32::MAX;
-        buffer.window_buffer[(2, 1)] = u32::MAX;
-        buffer.window_buffer[(2, 2)] = u32::MAX;
+        let mut buffer: World = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0, 0x0066CC33);
+        buffer.window_buffer[(1, 1)] = buffer.colour_cell;
+        buffer.window_buffer[(1, 2)] = buffer.colour_cell;
+        buffer.window_buffer[(2, 1)] = buffer.colour_cell;
+        buffer.window_buffer[(2, 2)] = buffer.colour_cell;
         assert_snapshot!(
             buffer.window_buffer.to_string(),
             @r###"
@@ -222,10 +225,10 @@ mod test {
 
     #[test]
     fn cells_life_line() {
-        let mut buffer = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0);
-        buffer.window_buffer[(1, 1)] = u32::MAX;
-        buffer.window_buffer[(1, 2)] = u32::MAX;
-        buffer.window_buffer[(1, 3)] = u32::MAX;
+        let mut buffer = World::new(WindowBuffer::new(5, 4), 0, Instant::now(), 0, 0x0066CC33);
+        buffer.window_buffer[(1, 1)] = buffer.colour_cell;
+        buffer.window_buffer[(1, 2)] = buffer.colour_cell;
+        buffer.window_buffer[(1, 3)] = buffer.colour_cell;
         assert_snapshot!(
             buffer.window_buffer.to_string(),
             @r###"
@@ -249,12 +252,12 @@ mod test {
 
     #[test]
     fn cells_life_strange_shape() {
-        let mut buffer = World::new(WindowBuffer::new(10, 10), 0, Instant::now(), 0);
-        buffer.window_buffer[(2, 0)] = u32::MAX;
-        buffer.window_buffer[(3, 1)] = u32::MAX;
-        buffer.window_buffer[(1, 2)] = u32::MAX;
-        buffer.window_buffer[(2, 2)] = u32::MAX;
-        buffer.window_buffer[(3, 2)] = u32::MAX;
+        let mut buffer = World::new(WindowBuffer::new(10, 10), 0, Instant::now(), 0, 0x0066CC33);
+        buffer.window_buffer[(2, 0)] = buffer.colour_cell;
+        buffer.window_buffer[(3, 1)] = buffer.colour_cell;
+        buffer.window_buffer[(1, 2)] = buffer.colour_cell;
+        buffer.window_buffer[(2, 2)] = buffer.colour_cell;
+        buffer.window_buffer[(3, 2)] = buffer.colour_cell;
         assert_snapshot!(
             buffer.window_buffer.to_string(),
             @r###"
